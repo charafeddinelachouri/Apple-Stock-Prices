@@ -1,0 +1,293 @@
+---
+title: "Apple Stock Price"
+author: "Group 1- Charaf Lachouri, Alaba Olanipekun, Oscar Pacheco, Chandler Westmoreland"
+date: "2022-12-03"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(astsa)
+library(TSA)
+library(tseries)
+library(forecast)
+setwd("/Volumes/EXTREME SSD/UHD_MDSA/Fall_2022/Stat 5307/Project")
+grpdata<- read.csv('Apple stocks Dataset.csv')
+```
+
+# 1. Introduction  
+
+  There are few components as important as the stock market, in a free market system. In a nutshell, a stock market is a tool that allows companies to raise money by offering small parts of the company, aka shares, which then gives shareholders chances to make a profit off the success of a company.     
+  Maneuvering the stock market can be a 4-year degree. Knowing when to buy and sell a stock can cost someone a fortune. The best traders can see things in a line graph that ordinary people cannot see. Often, their ability to correctly decipher a trend in the movement of stocks gives them an automatic leg up, in one of the most competitive sectors of the global economy. That’s where a general understanding of time series analysis comes in. Now there are tools available for traders that allow one to access trends with the press of a button, giving regular individuals more information to make educated assessments of a stock potential values. In a field as potentially volatile as the stock market, an educated risk can be the difference between financial life or death.   
+  In this analysis, an attempt to find an appropriate model of the movement of Apple stock (AAPL) from the years 1980 to 2022. Once an appropriate model to use for comparison is found, forecasting of future values in the next 12 months will be attempted, in the hopes of potentially finding an advantageous time to purchase apple stock.   
+  
+# 2. Exploratory Data Analysis  
+
+  This data was collected via yahoo Finance, following Apple Stock ( AAPL) prices from Dec of 1980 to June 2022. Outside of the year 1980, it includes the data for opening and closing price, high and low on a particular day, adjusted closing which takes in company expenses and the volume of times shares were traded during a day; for about 250 days in each year.   
+ 
+  This data set was found on Kaggle.com. It came in the form of a CSV and was not augmented outside or tampered with outside of RStudio. The link is attached below.  
+ 
+https://www.kaggle.com/datasets/meetnagadia/apple-stock-price-from-19802021   
+
+## Data Description:
+
+   The Apple Stock Price from 1980-2022 data ser contains 500 observations (rows) and 7 variables (columns). There are few components as important as the stock market, in a free market system. In a nutshell, a stock market is a tool that allows companies to raise money by offering small parts of the company, aka shares, which then gives shareholders chances to make a profit off the success of a company. 
+Maneuvering the stock market can be a 4-year degree. Knowing when to buy and sell a stock can cost someone a fortune. The best traders can see things in a line graph that ordinary people cannot see. Often, their ability to correctly decipher a trend in the movement of stocks gives them an automatic leg up, in one of the most competitive sectors of the global economy. That’s where a general understanding of time series analysis comes in. Now there are tools available for traders that allow one to access trends with the press of a button, giving regular individuals more information to make educated assessments of a stock potential values. In a field as potentially volatile as the stock market, an educated risk can be the difference between financial life or death.   
+   In this analysis, an attempt to find an appropriate model of the movement of Apple stock (AAPL) from the years 1980 to 2022. Once an appropriate model to use for comparison is found, forecasting of future values in the next 12 months will be attempted, in the hopes of potentially finding an advantageous time to purchase apple stock. 
+
+## Variables:  
+ 
+Ordinal Categorical Variable:  
+
+Our one ordinal categorical variable “Date” contains the name of the month and its corresponding year from 1980 – 2022. 
+
+Numerical or Quanititative Variable:  
+
+Our Numerical variables “Open”, “High”, “Low”, “Close”, “Adj.Close” and “Volume”, contain the average values of monthly trading prices and values.
+By looking at the distribution statistics provided by summary (), we can observe that all our numerical variables, do not have normal distributed data, which makes sense for the changes over the time of this very profitable and successful stock.  
+
+
+# 3. Statistical Summary  
+
+```{r}
+# Descriptions 
+summary(grpdata)
+```  
+# 
+```{r}
+# Checking the structure of the dataset
+str(grpdata)
+```  
+
+
+```{r}
+cl = grpdata$Close
+summary(cl)
+```  
+
+```{r}
+mode(cl)
+```  
+
+
+```{r}
+#standard deviation
+sd(cl)
+```  
+
+```{r}
+#variance
+var(cl)
+```  
+  
+# 4. Data cleaning (remove noise and inconsistent data)  
+
+```{r}
+# Missing values ? 
+sum(is.na(grpdata))
+```
+
+No missing values found.
+
+# 5. Data Visualization    
+
+```{r}
+grpda <- ts(grpdata$Close, start = 1980, frequency = 12)
+plot.ts(grpda) 
+```  
+
+```{r}
+ggseasonplot(grpda)
+```  
+  
+
+From the season plot above, you can make out some of the volatility in term of by month. The slight incline from beginning to end present in most years does show that some seasonality should be expected.  
+  
+  
+# 6. Stationarity Check out  
+
+First an the plot for x, our time series closing price data, will accessed for stationarity with its acf.  
+
+```{r,echo=FALSE}
+# check if the data is stationary using closing price
+par(mfrow= c(2,1))
+x=cl
+acf(x, 50)
+plot.ts(x)
+```  
+
+
+Clearly upper trend and slowly decay ACF, no stationarity so far, let's apply some data transformation on our dataset in order to stabilize the variance.  
+  
+  
+# 7. Data Transformation  
+
+First a log transformation was performed.  
+
+```{r, echo = FALSE}
+# Let's start off by log transformation
+par(mfrow = c(2,1))
+logx = log(x)
+plot.ts(logx)
+acf(logx)
+```  
+
+
+Still no stationarity, so differencing was applied.    
+  
+```{r, echo=FALSE}
+# First difference
+dlogx = diff(logx)
+plot(dlogx, type = "h")
+```  
+
+
+Despite couple spikes, it Looks much better.  
+  
+  
+```{r,echo = FALSE}
+library(astsa)
+invisible(acf2(dlogx, 200))
+```  
+The acf drops quickly which is what you want in stationary data.  
+
+Let's apply one more differencing to see if it will look a bit better.  
+
+  
+```{r,echo=FALSE}
+ddlogx = diff(dlogx,12)
+plot(ddlogx, type = "h")
+```  
+
+```{r,echo= FALSE}
+invisible(acf2(ddlogx, 200))
+```  
+
+
+The seasonal ACF cuts off after H = 1 and its PACF tails off which looks like we're having SMA(1) model here.
+Non-seasonal ACF and its PACF are tailing off which means we're having ARMA model here. In this case we need to check with the Extended ACF.   
+
+
+# 8. Model Selection  
+
+Using EACF, the appropriate terms for non-seasonal ARMA models will be determined.  
+
+```{r, echo=FALSE}
+eacf(ddlogx)
+```  
+  
+#(p,q) = (0,1),(1,1),(1,2),(2,2). Let's try all of them.  
+  
+```{r, warning = FALSE}
+#plots
+plot.ts(cbind(x,logx,dlogx,ddlogx ))
+```  
+  
+  
+From here you can see the minimal effect 2nd order differencing does. Also, the 1st order differenced acf has the steep drop seen in stationary data, so models will only take into account first order differencing. The idea here is to not overfit.  
+  
+  
+```{r, results='hide'}
+sarima(logx,0,1,1, 0,1,1, 12) #model 1
+```  
+
+```{r,echo= FALSE}
+sarima(logx,0,1,1, 0,1,1, 12, details = FALSE, model= TRUE) #model 1 data
+```
+ 
+  
+Good residuals variation, good normal distribution, all the data points in the confidence bound except one data point (It could be outlier), Most of the P-values are under the 0.05 bar. Let's try the next model ARMA(1,1).  
+ 
+      
+```{r,results='hide'}
+sarima(logx, 1,1,1, 0,1,1, 12) # model2
+```  
+```{r,echo=FALSE}
+sarima(logx, 1,1,1, 0,1,1, 12,details = FALSE, model= TRUE) # model2
+```  
+
+  
+Better than model one but still is not good enough. Let's try the next model ARMA (1,2).  
+ 
+  
+```{r,results='hide'}
+sarima(logx, 1,1,2, 0,1,1, 12) #model3
+```
+```{r,echo=FALSE}
+sarima(logx, 1,1,2, 0,1,1, 12,details = FALSE, model= TRUE) #model3
+```  
+
+  
+It looks way better than model2. Let's try the last model ARMA(2,2).  
+ 
+  
+```{r,results='hide'}
+sarima(logx, 2,1,2, 0,1,1, 12) #model4
+```  
+```{r, echo=FALSE}
+sarima(logx, 2,1,2, 0,1,1, 12,details = FALSE, model= TRUE) #model4
+```  
+
+  
+It looks perfect. Let's compare model 3 and 4.  
+  
+  
+# 9. Models Comparison 
+
+```{r, echo= FALSE}
+# note considering the pvalue of other model which significant
+Test = c("AIC", "AICc", "BIC")
+model3 = c(-1.518799, -1.518628, -1.475798)
+model4 = c(-1.517055, -1.516799, -1.465454)
+Model_comparism = data.frame(Test,model3, model4)
+Model_comparism
+```  
+
+  
+All AIC, AICc and BIC of model 3 are smaller than model 4's. Our winner is model 3. Let's see what auto.sarima suggests!  
+
+  
+```{r}
+auto.arima(logx)
+```  
+
+  
+Even though Auto.arima suggests ARIMA(2,1,2) which is our model 4. We decided to stick with model 3 because its AIC, AICc and BIC are better than model 4's.  
+ 
+  
+# 10. Forcasting 
+  
+```{r}
+#predicting the next 12 months of Apple stock price
+pred_mod = sarima.for(logx,12,2,1,2,0,1,1,12)
+```  
+
+```{r, echo = FALSE}
+Predictions_Monthly = cbind(Months, round(exp(pred_mod$pred),2), round((exp(pred_mod$pred)+1.96*exp(pred_mod$se)),2),round((exp(pred_mod$pred)-1.96*exp(pred_mod$se)),2))
+column = c("Month", "Predicted Price", "Possible High", "Possible Low")
+colnames(Predictions_Monthly) = column
+Predictions_Monthly
+```  
+
+# 11. Conclusion  
+  
+   From the prediction tables above it appears that November appears to be the best possible time to sell. It predicted value is highest of all months, even when considering the +- effects of the standard error. This could be due to the fact that its the start of the holiday season, when sales are probably at the all time highest for this particular company. The effects of being on this side of Christmas probably brings in a lot of revenue for the company during this time period.  
+
+   If buying was the plan, it appears this January is the best time to get an opportunity at a low price. Its potential low price is smaller than any value predicted. On the flip side of the best time for selling, being on the other side of Christmas probably have a negative effect on sales, which can affect the stock of a company for the short term.  
+  
+   There appears to be an unexplained anomaly during the month of April. Our guess is that this is because Feburary sees a spike due to tax refunds, in which people might decide to spend a refund on an apple product, and then the regular steady increases until holiday season, where people again start to spend money.  
+  
+# 12. References
+
+
+  Hayes, Adam. “What Is a Time Series and How Is It Used to Analyze Data?” Investopedia, Investopedia, 8 Oct. 2022, https://www.investopedia.com/terms/t/timeseries.asp#:~:text=In%20investing%2C%20a%20time%20series,points%20recorded%20at%20regular%20intervals. 
+  
+  Shumway, Robert H., and David S. Stoffer. Time Series Analysis and Its Applications: With R Examples. Springer International Publishing, 2017. 
+  
+  emrearslan123. “Apple Inc.. Stock Price Analysis and Forecasting.” Kaggle, Kaggle, 7 Sept. 2022, https://www.kaggle.com/code/emrearslan123/apple-inc-stock-price-analysis-and-forecasting?scriptVersionId=105163729. 
+
+
+  Aurellia, Christine. “Time Series and Stock Analysis.” RPubs, https://www.rpubs.com/AurelliaChristie/time-series-and-stock-analysis. 
